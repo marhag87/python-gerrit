@@ -27,14 +27,22 @@ class Project(object):
         self._gerrit_con = gerrit_con
 
         self.name = None
-        self.parent = None
-        self.description = None
-        self.state = None
-        self.branches = None
-        self.web_links = None
 
     def __eq__(self, other):
         return self.name == other.name
+
+    def __getattr__(self, name):
+        r_endpoint = "/a/projects/%s/" % self.name
+
+        req = self._gerrit_con.call(r_endpoint=r_endpoint)
+
+        status_code = req.status_code
+        result = req.content.decode('utf-8')
+
+        if status_code == 200:
+            return decode_json(result).get(name)
+        else:
+            raise AttributeError
 
     def get_project(self, name):
         """
@@ -55,13 +63,7 @@ class Project(object):
         result = req.content.decode('utf-8')
 
         if status_code == 200:
-            project_info = decode_json(result)
-            self.name = project_info.get('name')
-            self.parent = project_info.get('parent')
-            self.description = project_info.get('description')
-            self.state = project_info.get('state')
-            self.branches = project_info.get('branches')
-            self.web_links = project_info.get('web_links')
+            self.name = decode_json(result).get('name')
             return self
         elif status_code == 404:
             raise ValueError(result)
