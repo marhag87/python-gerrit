@@ -16,20 +16,24 @@ class Change(object):
 
     def __init__(self, gerrit_con):
         self._gerrit_con = gerrit_con
-        self._change_id = None
         self.full_id = None
-        self.project = None
-        self.branch = None
-        self.change_id = None
-        self.subject = None
-        self.status = None
-        self.created = None
-        self.updated = None
-        self.mergable = None
-        self.insertions = None
-        self.deletions = None
-        self.number = None
-        self.owner = None
+
+    def __getattr__(self, name):
+        r_endpoint = "/a/changes/%s/" % self.full_id
+
+        req = self._gerrit_con.call(r_endpoint=r_endpoint)
+
+        status_code = req.status_code
+        result = req.content.decode('utf-8')
+
+        if status_code == 200:
+            result = decode_json(result).get(name)
+            if result is None:
+                raise AttributeError
+            else:
+                return result
+        else:
+            raise AttributeError
 
     def get_change(self, project, branch, change_id):
         """
@@ -51,10 +55,10 @@ class Change(object):
             raise KeyError('Id required')
 
         # HTTP REST API HEADERS
-        self._change_id = '%s~%s~%s' % (project, branch, change_id)
+        self.full_id = '%s~%s~%s' % (project, branch, change_id)
         self._gerrit_con = self._gerrit_con
 
-        r_endpoint = "/a/changes/%s/" % self._change_id
+        r_endpoint = "/a/changes/%s/" % self.full_id
 
         req = self._gerrit_con.call(r_endpoint=r_endpoint)
 
@@ -62,27 +66,12 @@ class Change(object):
         result = req.content.decode('utf-8')
 
         if status_code == 200:
-            change_info = decode_json(result)
+            self.full_id = decode_json(result).get('id')
+            return self
         elif status_code == 404:
             raise ValueError(result)
         else:
             raise UnhandledError(result)
-
-        self.full_id = change_info.get('id')
-        self.project = change_info.get('project')
-        self.branch = change_info.get('branch')
-        self.change_id = change_info.get('change_id')
-        self.subject = change_info.get('subject')
-        self.status = change_info.get('status')
-        self.created = change_info.get('created')
-        self.updated = change_info.get('updated')
-        self.mergable = change_info.get('mergable')
-        self.insertions = change_info.get('insertions')
-        self.deletions = change_info.get('deletions')
-        self.number = change_info.get('number')
-        self.owner = change_info.get('owner')
-
-        return self
 
     def create_change(self, project, subject, branch, options):
         """
@@ -95,6 +84,9 @@ class Change(object):
         :type branch: str
         :param options: Additional options
         :type options: dict
+        :returns: gerrit.change.Change object
+        :rtype: gerrit.change.Change
+        :except: UnhandledError
         """
 
         r_endpoint = "/a/changes/"
@@ -123,12 +115,12 @@ class Change(object):
         result = req.content.decode('utf-8')
 
         if req.status_code == 201:
-            change = Change(self._gerrit_con)
-            return change.get_change(
+            self.full_id = "%s~%s~%s" % (
                 project,
                 branch,
                 decode_json(result).get('change_id')
             )
+            return self
         else:
             raise UnhandledError(result)
 
@@ -137,8 +129,9 @@ class Change(object):
         Submit the change
         :param options: Additional options
         :type options: dict
-        :return: On success, the updated Change object
-        :rtype: Change object
+        :returns: On success, True
+        :rtype: bool
+        :except: UnhandledError
         """
 
         r_endpoint = "/a/changes/%s/submit" % self.full_id
@@ -152,11 +145,10 @@ class Change(object):
             r_payload=options,
         )
 
-        result = req.content.decode('utf-8')
-
         if req.status_code == 200:
-            self.status = decode_json(result).get('status')
+            return True
         else:
+            result = req.content.decode('utf-8')
             raise UnhandledError(result)
 
     def add_reviewer(self, account_id):
@@ -164,7 +156,7 @@ class Change(object):
         Add a reviewer to the change
         :param account_id: The user account that should be added as a reviewer
         :type account_id: str
-        :return: You get a True boolean type if the addition of this user was successful
+        :returns: You get a True boolean type if the addition of this user was successful
         :rtype: bool
         :except: LookupError, AlreadyExists, UnhandledError
         """
@@ -176,6 +168,7 @@ class Change(object):
         Delete a reviewer from the change
         :param account_id: Remove a user with account-id as reviewer.
         :type account_id: str
+        :returns: On success, True
         :rtype: bool
         :exception: error.AuthorizationError
         """
@@ -201,6 +194,8 @@ class Change(object):
         :type message: str
         :param comments: This will become comments in the code.
         :type comments: dict
+        :returns: On success, True
+        :rtype: bool
         """
         revision = Revision(self._gerrit_con, self.change_id, revision)
         return revision.set_review(labels=labels, message=message, comments=comments)

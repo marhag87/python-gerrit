@@ -135,19 +135,13 @@ class ChangeTestCase(unittest.TestCase):
         gerrit_con = mock.Mock()
         gerrit_con.call.return_value = req
 
-        with mock.patch.object(Change, 'get_change') as mock_get_change:
-            cng = Change(gerrit_con)
-            cng.create_change(
-                'gerritproject',
-                'My change',
-                'master',
-                {'status': 'DRAFT'},
-            )
-            mock_get_change.assert_called_with(
-                'gerritproject',
-                'master',
-                'I01440b5fd46a67ee38c9ef2c22eb145b8547cbb2',
-            )
+        cng = Change(gerrit_con)
+        cng.create_change(
+            'gerritproject',
+            'My change',
+            'master',
+            {'status': 'DRAFT'},
+        )
 
     def test_create_change_fail(self):
         req = mock.Mock()
@@ -178,21 +172,15 @@ class ChangeTestCase(unittest.TestCase):
         gerrit_con_project = mock.Mock()
         gerrit_con_project.call.return_value = req_project
 
-        with mock.patch.object(Change, 'get_change') as mock_get_change:
-            pjt = Project(gerrit_con_project)
-            project = pjt.get_project('gerritproject')
-            cng = Change(gerrit_con)
-            change = cng.create_change(
-                project,
-                'My change',
-                'master',
-                {'status': 'DRAFT'}
-            )
-            mock_get_change.assert_called_with(
-                'gerritproject',
-                'master',
-                'I01440b5fd46a67ee38c9ef2c22eb145b8547cbb2',
-            )
+        pjt = Project(gerrit_con_project)
+        project = pjt.get_project('gerritproject')
+        cng = Change(gerrit_con)
+        change = cng.create_change(
+            project,
+            'My change',
+            'master',
+            {'status': 'DRAFT'}
+        )
 
     def test_submit_change_success(self):
         req = mock.Mock()

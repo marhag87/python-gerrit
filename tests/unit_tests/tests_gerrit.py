@@ -229,7 +229,7 @@ class GerritChangeTestCase(unittest.TestCase):
 
         reference = Gerrit(url='http://domain.com')
         change = reference.create_change('gerritproject', 'change status')
-        self.assertIsInstance(change, Change)
+        self.assertTrue(change)
         mock_post.assert_called_with(
             auth=mock.ANY,
             headers=mock.ANY,
