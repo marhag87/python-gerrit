@@ -54,7 +54,10 @@ class Change(object):
         self._change_id = '%s~%s~%s' % (project, branch, change_id)
         self._gerrit_con = self._gerrit_con
 
-        r_endpoint = "/a/changes/%s/" % self._change_id
+        r_endpoint = {
+            'endpoint': '/a/changes/',
+            'data': '%s/' % self._change_id,
+        }
 
         req = self._gerrit_con.call(r_endpoint=r_endpoint)
 

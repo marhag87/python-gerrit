@@ -6,6 +6,7 @@ Set up connection to gerrit
 """
 
 import requests
+import urllib
 from requests.auth import HTTPBasicAuth
 from requests.auth import HTTPDigestAuth
 from requests.utils import get_netrc_auth
@@ -99,6 +100,11 @@ class Gerrit(object):
         :rtype: requests.packages.urllib3.response.HTTPResponse
         """
 
+        if not isinstance(r_endpoint, str):
+            r_endpoint = '%s%s' % (
+                r_endpoint.get('endpoint'),
+                urllib.parse.quote(r_endpoint.get('data')),
+            )
         if r_headers is None:
             r_headers = self._requests_headers
 
